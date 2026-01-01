@@ -29,6 +29,11 @@ export default function VisualizerDemo() {
         <Loader2 className="animate-spin" />Loading...</div>}
       {fileState.file ? <Visualizer file={fileState.file} /> :
         <div className="flex flex-col items-center gap-5 my-20">
+          <img
+            src="/@fs/Users/ishan-aiworkspace/Downloads/images-olivetum-clay/olivetum-clay-repeated-patterns-coordonne.jpg"
+            alt="Olivetum Clay Pattern"
+            className="w-full max-w-4xl rounded-lg shadow-lg mb-8"
+          />
           <div className="flex gap-5 flex-wrap">
             <Button asChild>
               <label htmlFor="fileinput">
