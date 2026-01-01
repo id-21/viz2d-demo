@@ -1,0 +1,359 @@
+commit 78ad46a5a69651d1600556e041b2dd949766bbbe
+Author: Ishan @ AI Workspace <ishandaga82@gmail.com>
+Date:   Thu Jan 1 15:31:32 2026 +0530
+
+    feat: Changed the UI to allow user to choose from preuploaded textures
+
+diff --git a/src/visualizer-demo/visualizer.tsx b/src/visualizer-demo/visualizer.tsx
+index 494fcb9..15c1106 100644
+--- a/src/visualizer-demo/visualizer.tsx
++++ b/src/visualizer-demo/visualizer.tsx
+@@ -4,10 +4,10 @@ import {
+   useEffect,
+   useRef,
+   useState,
+-  ChangeEvent,
+   MouseEvent,
+ } from "react";
+ import { TextureRenderer } from "@viz2d/core";
++import textureAssets from "@/lib/textureAssets";
+ 
+ // ----------------------
+ // Types
+@@ -18,15 +18,6 @@ type SegmentWithMask = {
+   class_name: string;
+ };
+ 
+-type TextureInfo = {
+-  id: number;
+-  name: number;
+-  rotation: number;
+-  scale: number;
+-  offset_x: number;
+-  offset_y: number;
+-};
+-
+ // ----------------------
+ // Helpers
+ // ----------------------
+@@ -42,102 +33,12 @@ function getMouseIndex(
+   return x < 0 || y < 0 || x >= width || y >= height ? -1 : y * width + x;
+ }
+ 
+-// ----------------------
+-// UI Components
+-// ----------------------
+-const TextureSlider = ({
+-  label,
+-  value,
+-  min,
+-  max,
+-  step,
+-  onChange,
+-}: {
+-  label: string;
+-  value: number;
+-  min: number;
+-  max: number;
+-  step: number;
+-  onChange: (value: number) => void;
+-}) => (
+-  <div>
+-    <div className="flex justify-between text-xs text-zinc-400">
+-      <span>{label}</span>
+-      <span>{value.toFixed(2)}</span>
+-    </div>
+-    <input
+-      type="range"
+-      min={min}
+-      max={max}
+-      step={step}
+-      value={value}
+-      onChange={(e) => onChange(Number(e.target.value))}
+-      className="w-full accent-indigo-500"
+-    />
+-  </div>
+-);
+-
+-const TextureCard = ({
+-  tex,
+-  onRemove,
+-  onUpdate,
+-}: {
+-  tex: TextureInfo;
+-  onRemove: (id: number) => void;
+-  onUpdate: (id: number, field: keyof TextureInfo, value: number) => void;
+-}) => (
+-  <div className="rounded-lg border border-zinc-700 p-3 space-y-1">
+-    <div className="flex items-center justify-between">
+-      <span className="text-sm font-medium">Texture #{tex.id}</span>
+-      <button
+-        onClick={() => onRemove(tex.id)}
+-        className="text-xs rounded-md bg-red-600/80 px-2 py-1 hover:bg-red-600"
+-      >
+-        Remove
+-      </button>
+-    </div>
+-
+-    <TextureSlider
+-      label="Rotation"
+-      value={tex.rotation}
+-      min={-180}
+-      max={180}
+-      step={1}
+-      onChange={(v) => onUpdate(tex.id, "rotation", v)}
+-    />
+-    <TextureSlider
+-      label="Scale"
+-      value={tex.scale}
+-      min={0.2}
+-      max={5}
+-      step={0.05}
+-      onChange={(v) => onUpdate(tex.id, "scale", v)}
+-    />
+-    <TextureSlider
+-      label="Offset X"
+-      value={tex.offset_x}
+-      min={-2}
+-      max={2}
+-      step={0.05}
+-      onChange={(v) => onUpdate(tex.id, "offset_x", v)}
+-    />
+-    <TextureSlider
+-      label="Offset Y"
+-      value={tex.offset_y}
+-      min={-2}
+-      max={2}
+-      step={0.05}
+-      onChange={(v) => onUpdate(tex.id, "offset_y", v)}
+-    />
+-  </div>
+-);
+ 
+ // ----------------------
+ // Main Component
+ // ----------------------
+ export default function Visualizer({ file }:{file:File}){
+   const canvasRef = useRef<HTMLCanvasElement>(null);
+-  const fileInputRef = useRef<HTMLInputElement>(null);
+   const rendererRef = useRef(new TextureRenderer());
+   const renderer = rendererRef.current;
+ 
+@@ -145,29 +46,15 @@ export default function Visualizer({ file }:{file:File}){
+   const [isBundleLoading, setIsBundleLoading] = useState(false);
+   const [isTextureLoading, setIsTextureLoading] = useState(false);
+ 
+-  const [textures, setTextures] = useState<TextureInfo[]>([]);
+   const [segments, setSegments] = useState<SegmentWithMask[]>([]);
+   const [segMap, setSegMap] = useState<Int32Array | null>(null);
+-  const [selectedSeg, setSelectedSeg] = useState<number | null>(null);
+   const [hoverSeg, setHoverSeg] = useState<number | null>(null);
+   const [imageSize, setImageSize] =
+     useState<{ width: number; height: number } | null>(null);
+   const [imageVersion, setImageVersion] = useState(0);
+ 
+-  const refreshTextures = useCallback(() => {
+-    const list = renderer.get_textures();
+-    setTextures(
+-      list.map((t: any) => ({
+-        id: t.id,
+-        name: t.name,
+-        rotation: t.rotation,
+-        scale: t.scale,
+-        offset_x: t.offset_x,
+-        offset_y: t.offset_y,
+-      }))
+-    );
+-    setImageVersion((v) => v + 1);
+-  }, [renderer]);
++  const [selectedTexture, setSelectedTexture] = useState<number | null>(null);
++  const [segmentTextureMap, setSegmentTextureMap] = useState<Record<number, number>>({});
+ 
+   const draw = useCallback(() => {
+     if (!canvasRef.current) return;
+@@ -201,7 +88,6 @@ export default function Visualizer({ file }:{file:File}){
+   }, [imageVersion, hoverSeg, bundleLoaded, draw]);
+ 
+   const loadFile = async () => {
+-
+     setIsBundleLoading(true);
+     try {
+       await renderer.load(
+@@ -218,7 +104,7 @@ export default function Visualizer({ file }:{file:File}){
+       setSegMap(map);
+       setImageSize({ width: out.width, height: out.height });
+       setBundleLoaded(true);
+-      refreshTextures();
++      setImageVersion((v) => v + 1);
+     } finally {
+       setIsBundleLoading(false);
+     }
+@@ -239,24 +125,24 @@ export default function Visualizer({ file }:{file:File}){
+     setHoverSeg(idx >= 0 ? segMap[idx] : null);
+   };
+ 
+-  const handleClick = () => {
+-    if (hoverSeg == null || isBundleLoading || isTextureLoading) return;
+-    setSelectedSeg(hoverSeg);
+-    fileInputRef.current?.click();
+-  };
+-
+-  const handleTextureUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+-    const file = e.target.files?.[0];
+-    if (!file || selectedSeg == null) return;
++  const applyTexture = async (segmentId: number) => {
++    if (selectedTexture == null) return;
+ 
+-    const seg = segments.find((s) => s.segment_id === selectedSeg);
++    const seg = segments.find((s) => s.segment_id === segmentId);
+     if (!seg) return;
+ 
++    const texture = textureAssets.find((t) => t.id === selectedTexture);
++    if (!texture) return;
++
+     setIsTextureLoading(true);
+     try {
+-      await renderer.apply_texture(
++      const response = await fetch(texture.path);
++      const blob = await response.blob();
++      const arrayBuffer = await blob.arrayBuffer();
++
++      const textureId = await renderer.apply_texture(
+         seg.mask,
+-        new Uint8Array(await file.arrayBuffer()),
++        new Uint8Array(arrayBuffer),
+         {
+           name: 1,
+           rotation: 0,
+@@ -265,34 +151,41 @@ export default function Visualizer({ file }:{file:File}){
+           offset_y: 0,
+         }
+       );
+-      refreshTextures();
++
++      setSegmentTextureMap((prev) => ({ ...prev, [segmentId]: textureId }));
++      setImageVersion((v) => v + 1);
+     } finally {
+       setIsTextureLoading(false);
+-      e.target.value = "";
+     }
+   };
+ 
+-  const updateTextureField = async (
+-    id: number,
+-    field: keyof TextureInfo,
+-    value: number
+-  ) => {
++  const removeTexture = async (segmentId: number) => {
++    const textureId = segmentTextureMap[segmentId];
++    if (textureId == null) return;
++
+     setIsTextureLoading(true);
+     try {
+-      await renderer.update_texture(id, { [field]: value } as any);
+-      refreshTextures();
++      await renderer.remove_texture(textureId);
++      setSegmentTextureMap((prev) => {
++        const newMap = { ...prev };
++        delete newMap[segmentId];
++        return newMap;
++      });
++      setImageVersion((v) => v + 1);
+     } finally {
+       setIsTextureLoading(false);
+     }
+   };
+ 
+-  const removeTexture = async (id: number) => {
+-    setIsTextureLoading(true);
+-    try {
+-      await renderer.remove_texture(id);
+-      refreshTextures();
+-    } finally {
+-      setIsTextureLoading(false);
++  const handleClick = () => {
++    if (hoverSeg == null || isBundleLoading || isTextureLoading) return;
++    if (selectedTexture == null) return;
++
++    const hasTexture = segmentTextureMap[hoverSeg] != null;
++    if (hasTexture) {
++      removeTexture(hoverSeg);
++    } else {
++      applyTexture(hoverSeg);
+     }
+   };
+ 
+@@ -326,22 +219,47 @@ export default function Visualizer({ file }:{file:File}){
+ 
+       {!bundleLoaded && (
+         <p className="text-xs text-zinc-500">
+-          Load a bundle and click a segment
++          Load a bundle first
+         </p>
+       )}
+ 
+-      {bundleLoaded && textures.length === 0 && (
+-        <p className="text-xs text-zinc-500">No textures yet</p>
++      {bundleLoaded && selectedTexture == null && (
++        <p className="text-xs text-zinc-500">Select a texture below, then click a segment</p>
+       )}
+ 
+-      {textures.map(tex => (
+-        <TextureCard
+-          key={tex.id}
+-          tex={tex}
+-          onRemove={removeTexture}
+-          onUpdate={updateTextureField}
+-        />
+-      ))}
++      {bundleLoaded && selectedTexture != null && (
++        <p className="text-xs text-indigo-400">Click on a segment to apply or remove texture</p>
++      )}
++
++      <div className="grid grid-cols-2 gap-3">
++        {textureAssets.map(texture => (
++          <button
++            key={texture.id}
++            onClick={() => setSelectedTexture(texture.id)}
++            className={`
++              rounded-lg overflow-hidden border-2 transition-all
++              ${selectedTexture === texture.id
++                ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
++                : 'border-zinc-700 hover:border-zinc-600'}
++            `}
++            disabled={!bundleLoaded}
++          >
++            <img
++              src={texture.path}
++              alt={texture.name}
++              className="w-full aspect-square object-cover"
++            />
++            <div className={`
++              text-xs p-1.5 text-center
++              ${selectedTexture === texture.id
++                ? 'bg-indigo-500/20 text-indigo-200'
++                : 'bg-zinc-800 text-zinc-400'}
++            `}>
++              {texture.name}
++            </div>
++          </button>
++        ))}
++      </div>
+     </aside>
+ 
+     {/* Main */}
+@@ -376,14 +294,6 @@ export default function Visualizer({ file }:{file:File}){
+           </div>
+         )}
+       </div>
+-
+-      <input
+-        ref={fileInputRef}
+-        type="file"
+-        accept="image/*"
+-        className="hidden"
+-        onChange={handleTextureUpload}
+-      />
+     </main>
+   </div>
+ </div>

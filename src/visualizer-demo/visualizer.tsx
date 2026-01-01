@@ -8,6 +8,7 @@ import {
 } from "react";
 import { TextureRenderer } from "@viz2d/core";
 import textureAssets from "@/lib/textureAssets";
+import { Search, Settings } from "lucide-react";
 
 // ----------------------
 // Types
@@ -17,6 +18,105 @@ type SegmentWithMask = {
   mask: Uint32Array;
   class_name: string;
 };
+
+type TextureInfo = {
+  id: number;
+  name: number;
+  rotation: number;
+  scale: number;
+  offset_x: number;
+  offset_y: number;
+};
+
+// ----------------------
+// UI Components
+// ----------------------
+const TextureSlider = ({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) => (
+  <div>
+    <div className="flex justify-between text-xs text-zinc-400">
+      <span>{label}</span>
+      <span>{value.toFixed(2)}</span>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full accent-indigo-500"
+    />
+  </div>
+);
+
+const TextureCard = ({
+  tex,
+  onRemove,
+  onUpdate,
+}: {
+  tex: TextureInfo;
+  onRemove: (id: number) => void;
+  onUpdate: (id: number, field: keyof TextureInfo, value: number) => void;
+}) => (
+  <div className="rounded-lg border border-zinc-700 p-3 space-y-1">
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-medium">Texture #{tex.id}</span>
+      <button
+        onClick={() => onRemove(tex.id)}
+        className="text-xs rounded-md bg-red-600/80 px-2 py-1 hover:bg-red-600"
+      >
+        Remove
+      </button>
+    </div>
+
+    <TextureSlider
+      label="Rotation"
+      value={tex.rotation}
+      min={-180}
+      max={180}
+      step={1}
+      onChange={(v) => onUpdate(tex.id, "rotation", v)}
+    />
+    <TextureSlider
+      label="Scale"
+      value={tex.scale}
+      min={0.2}
+      max={5}
+      step={0.05}
+      onChange={(v) => onUpdate(tex.id, "scale", v)}
+    />
+    <TextureSlider
+      label="Offset X"
+      value={tex.offset_x}
+      min={-2}
+      max={2}
+      step={0.05}
+      onChange={(v) => onUpdate(tex.id, "offset_x", v)}
+    />
+    <TextureSlider
+      label="Offset Y"
+      value={tex.offset_y}
+      min={-2}
+      max={2}
+      step={0.05}
+      onChange={(v) => onUpdate(tex.id, "offset_y", v)}
+    />
+  </div>
+);
 
 // ----------------------
 // Helpers
@@ -55,6 +155,24 @@ export default function Visualizer({ file }:{file:File}){
 
   const [selectedTexture, setSelectedTexture] = useState<number | null>(null);
   const [segmentTextureMap, setSegmentTextureMap] = useState<Record<number, number>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSliders, setShowSliders] = useState(false);
+  const [textures, setTextures] = useState<TextureInfo[]>([]);
+
+  const refreshTextures = useCallback(() => {
+    const list = renderer.get_textures();
+    setTextures(
+      list.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        rotation: t.rotation,
+        scale: t.scale,
+        offset_x: t.offset_x,
+        offset_y: t.offset_y,
+      }))
+    );
+    setImageVersion((v) => v + 1);
+  }, [renderer]);
 
   const draw = useCallback(() => {
     if (!canvasRef.current) return;
@@ -104,7 +222,7 @@ export default function Visualizer({ file }:{file:File}){
       setSegMap(map);
       setImageSize({ width: out.width, height: out.height });
       setBundleLoaded(true);
-      setImageVersion((v) => v + 1);
+      refreshTextures();
     } finally {
       setIsBundleLoading(false);
     }
@@ -153,25 +271,42 @@ export default function Visualizer({ file }:{file:File}){
       );
 
       setSegmentTextureMap((prev) => ({ ...prev, [segmentId]: textureId }));
-      setImageVersion((v) => v + 1);
+      refreshTextures();
     } finally {
       setIsTextureLoading(false);
     }
   };
 
-  const removeTexture = async (segmentId: number) => {
-    const textureId = segmentTextureMap[segmentId];
-    if (textureId == null) return;
-
+  const removeTexture = async (textureId: number) => {
     setIsTextureLoading(true);
     try {
       await renderer.remove_texture(textureId);
+
+      // Find and remove the segment mapping for this texture
       setSegmentTextureMap((prev) => {
         const newMap = { ...prev };
-        delete newMap[segmentId];
+        for (const [segId, texId] of Object.entries(prev)) {
+          if (texId === textureId) {
+            delete newMap[Number(segId)];
+          }
+        }
         return newMap;
       });
-      setImageVersion((v) => v + 1);
+      refreshTextures();
+    } finally {
+      setIsTextureLoading(false);
+    }
+  };
+
+  const updateTextureField = async (
+    id: number,
+    field: keyof TextureInfo,
+    value: number
+  ) => {
+    setIsTextureLoading(true);
+    try {
+      await renderer.update_texture(id, { [field]: value } as any);
+      refreshTextures();
     } finally {
       setIsTextureLoading(false);
     }
@@ -181,9 +316,9 @@ export default function Visualizer({ file }:{file:File}){
     if (hoverSeg == null || isBundleLoading || isTextureLoading) return;
     if (selectedTexture == null) return;
 
-    const hasTexture = segmentTextureMap[hoverSeg] != null;
-    if (hasTexture) {
-      removeTexture(hoverSeg);
+    const textureId = segmentTextureMap[hoverSeg];
+    if (textureId != null) {
+      removeTexture(textureId);
     } else {
       applyTexture(hoverSeg);
     }
@@ -208,14 +343,31 @@ export default function Visualizer({ file }:{file:File}){
         overflow-y-auto
       "
     >
-      <div className="text-xs rounded-md border border-zinc-700 px-2 py-1 bg-zinc-950">
-        Hovering:{" "}
-        <b className="text-zinc-200">
-          {segments.find(s => s.segment_id === hoverSeg)?.class_name || "none"}
-        </b>
+      <div className="relative">
+        <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-500" />
+        <input
+          type="text"
+          placeholder="Search textures..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-950 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
+        />
       </div>
 
-      <h3 className="text-sm font-semibold">Textures</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Textures</h3>
+        <button
+          onClick={() => setShowSliders(!showSliders)}
+          className={`p-1.5 rounded-md transition-colors ${
+            showSliders
+              ? 'bg-indigo-500/20 text-indigo-400'
+              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+          }`}
+          title="Toggle texture controls"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      </div>
 
       {!bundleLoaded && (
         <p className="text-xs text-zinc-500">
@@ -232,7 +384,9 @@ export default function Visualizer({ file }:{file:File}){
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        {textureAssets.map(texture => (
+        {textureAssets.filter(texture =>
+          texture.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ).map(texture => (
           <button
             key={texture.id}
             onClick={() => setSelectedTexture(texture.id)}
@@ -259,7 +413,32 @@ export default function Visualizer({ file }:{file:File}){
             </div>
           </button>
         ))}
+        {textureAssets.filter(texture =>
+          texture.name.toLowerCase().includes(searchQuery.toLowerCase())
+        ).length === 0 && searchQuery && (
+          <p className="text-xs text-zinc-500 col-span-2">No textures found</p>
+        )}
       </div>
+
+      {showSliders && (
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold border-t border-zinc-800 pt-3">
+            Applied Textures
+          </h4>
+          {textures.length === 0 ? (
+            <p className="text-xs text-zinc-500">No textures applied yet</p>
+          ) : (
+            textures.map(tex => (
+              <TextureCard
+                key={tex.id}
+                tex={tex}
+                onRemove={removeTexture}
+                onUpdate={updateTextureField}
+              />
+            ))
+          )}
+        </div>
+      )}
     </aside>
 
     {/* Main */}
