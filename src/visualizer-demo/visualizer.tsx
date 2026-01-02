@@ -4,11 +4,13 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
   MouseEvent,
 } from "react";
 import { TextureRenderer } from "@viz2d/core";
-import textureAssets from "@/lib/textureAssets";
+import textureAssetsData from "@/lib/textureAssets.json";
 import { Search, Settings } from "lucide-react";
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 // ----------------------
 // Types
@@ -19,6 +21,15 @@ type SegmentWithMask = {
   class_name: string;
 };
 
+type TextureAsset = {
+  id: number;
+  name: string;
+  filename: string;
+  localPath: string;
+  cloudUrl: string | null;
+  placeholder: string; // base64 200x200 preview
+};
+
 type TextureInfo = {
   id: number;
   name: number;
@@ -27,6 +38,9 @@ type TextureInfo = {
   offset_x: number;
   offset_y: number;
 };
+
+// Convert imported JSON data to typed array
+const textureAssets: TextureAsset[] = textureAssetsData as TextureAsset[];
 
 // ----------------------
 // UI Components
@@ -159,6 +173,26 @@ export default function Visualizer({ file }:{file:File}){
   const [showSliders, setShowSliders] = useState(false);
   const [textures, setTextures] = useState<TextureInfo[]>([]);
 
+  // Filtered textures with search
+  const filteredTextures = useMemo(() => {
+    if (!searchQuery.trim()) return textureAssets;
+
+    const query = searchQuery.toLowerCase().trim();
+    return textureAssets.filter(texture =>
+      texture.name.toLowerCase().includes(query) ||
+      texture.filename.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
+
+  // Virtual scrolling setup
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: filteredTextures.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 180, // Height per item (includes gap)
+    overscan: 10, // Render 10 extra items above/below viewport
+  });
+
   const refreshTextures = useCallback(() => {
     const list = renderer.get_textures();
     setTextures(
@@ -254,7 +288,16 @@ export default function Visualizer({ file }:{file:File}){
 
     setIsTextureLoading(true);
     try {
-      const response = await fetch(texture.path);
+      // Use localPath in dev, cloudUrl in production
+      const textureUrl = import.meta.env.DEV
+        ? texture.localPath
+        : texture.cloudUrl || texture.localPath;
+
+      const response = await fetch(textureUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to load texture: ${response.statusText}`);
+      }
+
       const blob = await response.blob();
       const arrayBuffer = await blob.arrayBuffer();
 
@@ -272,6 +315,9 @@ export default function Visualizer({ file }:{file:File}){
 
       setSegmentTextureMap((prev) => ({ ...prev, [segmentId]: textureId }));
       refreshTextures();
+    } catch (error) {
+      console.error('Error applying texture:', error);
+      // Show error in UI (texture will remain in loading state briefly then clear)
     } finally {
       setIsTextureLoading(false);
     }
@@ -383,40 +429,61 @@ export default function Visualizer({ file }:{file:File}){
         <p className="text-xs text-indigo-400">Click on a segment to apply or remove texture</p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        {textureAssets.filter(texture =>
-          texture.name.toLowerCase().includes(searchQuery.toLowerCase())
-        ).map(texture => (
-          <button
-            key={texture.id}
-            onClick={() => setSelectedTexture(texture.id)}
-            className={`
-              rounded-lg overflow-hidden border-2 transition-all
-              ${selectedTexture === texture.id
-                ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
-                : 'border-zinc-700 hover:border-zinc-600'}
-            `}
-            disabled={!bundleLoaded}
-          >
-            <img
-              src={texture.path}
-              alt={texture.name}
-              className="w-full aspect-square object-cover"
-            />
-            <div className={`
-              text-xs p-1.5 text-center
-              ${selectedTexture === texture.id
-                ? 'bg-indigo-500/20 text-indigo-200'
-                : 'bg-zinc-800 text-zinc-400'}
-            `}>
-              {texture.name}
-            </div>
-          </button>
-        ))}
-        {textureAssets.filter(texture =>
-          texture.name.toLowerCase().includes(searchQuery.toLowerCase())
-        ).length === 0 && searchQuery && (
-          <p className="text-xs text-zinc-500 col-span-2">No textures found</p>
+      {/* Virtual scrolling container */}
+      <div
+        ref={parentRef}
+        className="h-[calc(100vh-250px)] overflow-auto"
+      >
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            position: 'relative',
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const texture = filteredTextures[virtualItem.index];
+            return (
+              <div
+                key={texture.id}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualItem.start}px)`,
+                  padding: '0 0 12px 0',
+                }}
+              >
+                <button
+                  onClick={() => setSelectedTexture(texture.id)}
+                  className={`
+                    w-full rounded-lg overflow-hidden border-2 transition-all
+                    ${selectedTexture === texture.id
+                      ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
+                      : 'border-zinc-700 hover:border-zinc-600'}
+                  `}
+                  disabled={!bundleLoaded}
+                >
+                  <img
+                    src={texture.placeholder}
+                    alt={texture.name}
+                    className="w-full aspect-square object-cover"
+                  />
+                  <div className={`
+                    text-xs p-1.5 text-center
+                    ${selectedTexture === texture.id
+                      ? 'bg-indigo-500/20 text-indigo-200'
+                      : 'bg-zinc-800 text-zinc-400'}
+                  `}>
+                    {texture.name}
+                  </div>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        {filteredTextures.length === 0 && searchQuery && (
+          <p className="text-xs text-zinc-500 text-center py-8">No textures found</p>
         )}
       </div>
 

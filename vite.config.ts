@@ -1,21 +1,46 @@
 import path from "path"
 import fs from "fs"
 import react from "@vitejs/plugin-react"
-import { defineConfig, loadEnv } from "vite"
+import { defineConfig, loadEnv, Plugin } from "vite"
 import wasm from "vite-plugin-wasm"
+
+// Middleware to serve local textures from filesystem
+const localTextureMiddleware = (): Plugin => ({
+  name: 'local-texture-middleware',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (req.url?.startsWith('/local-textures/')) {
+        const texturePath = req.url.replace('/local-textures/', '');
+        const fsPath = path.join(
+          '/Users/ishan-aiworkspace/Documents/Daga PDF All Design Assets/TexturesForViz2D/Texture File',
+          texturePath
+        );
+
+        if (fs.existsSync(fsPath)) {
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=31536000');
+          fs.createReadStream(fsPath).pipe(res);
+          return;
+        }
+      }
+      next();
+    });
+  }
+});
 
 export default defineConfig(({ mode }) => {
   // Load env variables based on mode (development/production)
   const env = loadEnv(mode, process.cwd(), "")
 
   return {
-    plugins: [react(),wasm()],
+    plugins: [react(), wasm(), localTextureMiddleware()],
     server: {
       fs: {
-        // Allow serving files from both the project root and Downloads directory
+        // Allow serving files from project root, Downloads, and texture directory
         allow: [
           process.cwd(), // Project root
-          '/Users/ishan-aiworkspace/Downloads' // External directory
+          '/Users/ishan-aiworkspace/Downloads', // External directory
+          '/Users/ishan-aiworkspace/Documents/Daga PDF All Design Assets/TexturesForViz2D' // Texture files
         ]
       }
     },
