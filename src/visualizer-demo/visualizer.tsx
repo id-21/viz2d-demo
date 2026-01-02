@@ -429,7 +429,7 @@ export default function Visualizer({ file }:{file:File}){
         <p className="text-xs text-indigo-400">Click on a segment to apply or remove texture</p>
       )}
 
-      {/* Virtual scrolling container */}
+      {/* Virtual scrolling container with 2-column grid */}
       <div
         ref={parentRef}
         className="h-[calc(100vh-250px)] overflow-auto"
@@ -442,16 +442,18 @@ export default function Visualizer({ file }:{file:File}){
         >
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const texture = filteredTextures[virtualItem.index];
+            const columnIndex = virtualItem.index % 2; // 0 for left, 1 for right
+            const rowIndex = Math.floor(virtualItem.index / 2);
+
             return (
               <div
                 key={texture.id}
                 style={{
                   position: 'absolute',
                   top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualItem.start}px)`,
-                  padding: '0 0 12px 0',
+                  left: columnIndex === 0 ? '0' : 'calc(50% + 6px)',
+                  width: 'calc(50% - 6px)',
+                  transform: `translateY(${rowIndex * 180}px)`,
                 }}
               >
                 <button
