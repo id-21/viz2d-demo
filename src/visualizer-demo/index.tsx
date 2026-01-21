@@ -1,9 +1,10 @@
 'use client'
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import Visualizer from "./visualizer"
 import { Button } from "@/components/ui/button"
 import viz2dSamples from "@/lib/viz2dSamples"
-import { Loader2, Upload } from "lucide-react"
+import { Loader2, Upload, FlaskConical } from "lucide-react"
 
 export default function VisualizerDemo() {
   const [fileState, setFileState] = useState<{ loading: boolean, file?: File }>({
@@ -25,6 +26,13 @@ export default function VisualizerDemo() {
 
   return (
     <>
+      <Link
+        to="/api-test"
+        className="fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors"
+      >
+        <FlaskConical className="w-4 h-4" />
+        API Test
+      </Link>
       {fileState.loading && <div className="fixed top-0 left-0 w-screen h-screen bg-black text-white text-2xl opacity-50 flex gap-3 items-center justify-center z-50">
         <Loader2 className="animate-spin" />Loading...</div>}
       {fileState.file ? <Visualizer file={fileState.file} /> :
@@ -32,7 +40,7 @@ export default function VisualizerDemo() {
           <img
             src="/@fs/Users/ishan-aiworkspace/Downloads/images-olivetum-clay/olivetum-clay-repeated-patterns-coordonne.jpg"
             alt="Olivetum Clay Pattern"
-            className="w-full max-w-4xl rounded-lg shadow-lg mb-8"
+            className="max-w-[300px] max-h-[300px] object-contain rounded-lg shadow-lg mb-8"
           />
           <div className="flex gap-5 flex-wrap">
             <Button asChild>

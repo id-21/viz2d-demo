@@ -1,0 +1,23 @@
+[10:10:34 PM] Getting token for visualizer: cmkicrvcp0002m701g6cj2kc3
+[10:10:35 PM] Error: Cannot read properties of undefined (reading 'substring')
+[10:10:55 PM] Getting token for visualizer: cmkicrvcp0002m701g6cj2kc3
+[10:10:56 PM] Error: Cannot read properties of undefined (reading 'substring')
+[10:15:13 PM] Getting token for visualizer: cmkicrvcp0002m701g6cj2kc3
+[10:15:15 PM] Token received: eyJhbGciOiJIUzI1NiIs...
+[10:20:16 PM] Creating job with input: https://storage.googleapis.com/test-daga/WhatsApp%20Image%202026-01-01%20at%2014.26.42.jpeg
+[10:20:19 PM] Error: Internal Server Error
+[10:23:19 PM] Creating job with input: https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/800px-Camponotus_flavomarginatus_ant.jpg
+[10:23:21 PM] Error: Internal Server Error
+[10:23:36 PM] Getting token for visualizer: cmkicrvcp0002m701g6cj2kc3
+[10:23:37 PM] Token received: eyJhbGciOiJIUzI1NiIs...
+[10:23:42 PM] Creating job with input: https://storage.googleapis.com/test-daga/WhatsApp%20Image%202026-01-01%20at%2014.26.42.jpeg
+[10:23:44 PM] Job created: cmko9ihhc0001nv01hjn5r1vh (status: PENDING)
+[10:23:58 PM] Checking status for job: cmko9ihhc0001nv01hjn5r1vh
+[10:23:59 PM] Job status: PROCESSING
+[10:24:17 PM] Checking status for job: cmko9ihhc0001nv01hjn5r1vh
+[10:24:18 PM] Job status: PROCESSING
+[10:24:52 PM] Checking status for job: cmko9ihhc0001nv01hjn5r1vh
+[10:24:54 PM] Job status: COMPLETED
+[10:24:54 PM] Output URL: https://s3.webtoilswerbung.com/viz2d/viz2d/762a63b8-2971-4566-b803-edc9e4fa7c09.viz2d
+[10:25:00 PM] Downloading output...
+[10:26:34 PM] Download started
