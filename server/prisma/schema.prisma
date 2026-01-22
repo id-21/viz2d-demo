@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Track image uploads and their processing status
+model Image {
+  id            String      @id @default(cuid())
+  filename      String
+  originalName  String
+  mimeType      String
+  size          Int
+  gcsPath       String      // GCS path: gs://bucket/images/{id}/{filename}
+  gcsUrl        String      // Public/signed URL for access
+  thumbnailPath String?     // GCS path for thumbnail
+  thumbnailUrl  String?     // Public URL for thumbnail
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relationships
+  jobs       Job[]
+  viz2dFiles Viz2dFile[]
+}
+
+// Track Viz2D processing jobs
+model Job {
+  id          String    @id @default(cuid())
+  status      JobStatus @default(PENDING)
+
+  // Input
+  imageId     String
+  image       Image     @relation(fields: [imageId], references: [id])
+  inputGcsUrl String    // GCS URL passed to Viz2D API
+
+  // Viz2D API fields
+  viz2dJobId String? @unique // External Viz2D job ID
+  viz2dToken String? // Job token (stored temporarily)
+
+  // Output
+  outputUrl  String? // Viz2D API output URL (temporary)
+  failReason String?
+
+  // Resulting viz2d file
+  viz2dFileId String?    @unique
+  viz2dFile   Viz2dFile? @relation(fields: [viz2dFileId], references: [id])
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([status])
+  @@index([viz2dJobId])
+}
+
+// Track viz2d bundle files stored in GCS
+model Viz2dFile {
+  id       String @id @default(cuid())
+  filename String
+  gcsPath  String // gs://bucket/viz2d/{id}/{filename}.viz2d
+  gcsUrl   String // Signed/public URL
+  fileSize Int
+
+  // Link to source image
+  imageId String
+  image   Image  @relation(fields: [imageId], references: [id])
+
+  // Link to job that created it
+  job Job?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([imageId])
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}

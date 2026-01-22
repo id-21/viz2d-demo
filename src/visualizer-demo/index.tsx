@@ -1,15 +1,26 @@
 'use client'
-import { useState } from "react"
-import { Link } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { Link, useLocation } from "react-router-dom"
 import Visualizer from "./visualizer"
 import { Button } from "@/components/ui/button"
 import viz2dSamples from "@/lib/viz2dSamples"
-import { Loader2, Upload, FlaskConical } from "lucide-react"
+import { Loader2, Upload, FlaskConical, Images } from "lucide-react"
 
 export default function VisualizerDemo() {
+  const location = useLocation()
   const [fileState, setFileState] = useState<{ loading: boolean, file?: File }>({
     loading: false
   })
+
+  // Check if a file was passed via navigation state (from GalleryPage)
+  useEffect(() => {
+    const state = location.state as { file?: File } | null
+    if (state?.file) {
+      setFileState({ loading: false, file: state.file })
+      // Clear the state to avoid re-loading on page refresh
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   async function loadFromUrl(url: string) {
     setFileState({ loading: true })
@@ -26,13 +37,22 @@ export default function VisualizerDemo() {
 
   return (
     <>
-      <Link
-        to="/api-test"
-        className="fixed top-4 right-4 z-40 flex items-center gap-2 px-3 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors"
-      >
-        <FlaskConical className="w-4 h-4" />
-        API Test
-      </Link>
+      <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+        <Link
+          to="/gallery"
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors"
+        >
+          <Images className="w-4 h-4" />
+          Gallery
+        </Link>
+        <Link
+          to="/api-test"
+          className="flex items-center gap-2 px-3 py-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors"
+        >
+          <FlaskConical className="w-4 h-4" />
+          API Test
+        </Link>
+      </div>
       {fileState.loading && <div className="fixed top-0 left-0 w-screen h-screen bg-black text-white text-2xl opacity-50 flex gap-3 items-center justify-center z-50">
         <Loader2 className="animate-spin" />Loading...</div>}
       {fileState.file ? <Visualizer file={fileState.file} /> :

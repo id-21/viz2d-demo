@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Database
+*.db
+*.db-journal
+
+# Environment
+.env
+.env.local
+.env.production
+
+# GCP credentials
+gcp-credentials.json
+*.json.key
+*-*-*.json
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store

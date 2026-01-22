@@ -35,6 +35,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), wasm(), localTextureMiddleware()],
     server: {
+      // Proxy API requests to backend server
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
       fs: {
         // Allow serving files from project root, Downloads, and texture directory
         allow: [
@@ -56,8 +63,8 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_MINIO_PUBLIC_URL": JSON.stringify(env.MINIO_PUBLIC_URL),
       "import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID": JSON.stringify(env.GOOGLE_OAUTH_CLIENT_ID),
       "import.meta.env.VITE_GIPHY_API_KEY": JSON.stringify(env.GIPHY_API_KEY),
-      "import.meta.env.VITE_VIZ2D_API_URL": JSON.stringify(env.VITE_VIZ2D_API_URL),
-      "import.meta.env.VITE_VIZ2D_VISUALIZER_ID": JSON.stringify(env.VITE_VIZ2D_VISUALIZER_ID),
+      // Note: VIZ2D_API_URL and VIZ2D_VISUALIZER_ID are now server-side only
+      // All Viz2D API calls go through /api/v1/jobs
     },
     resolve: {
       alias: {
