@@ -18,6 +18,17 @@ interface ConfirmImageUploadInput {
 }
 
 /**
+ * Helper to add signed read URLs to image objects
+ * Since the GCS bucket is private, we need signed URLs for viewing images
+ */
+async function addSignedUrl<T extends { gcsPath: string; gcsUrl: string }>(
+  image: T
+): Promise<T> {
+  const { downloadUrl } = await gcsService.generateDownloadUrl(image.gcsPath)
+  return { ...image, gcsUrl: downloadUrl }
+}
+
+/**
  * Create a pending image record and generate upload URL
  */
 export async function createImageUploadUrl(
@@ -96,7 +107,8 @@ export async function confirmImageUpload(input: ConfirmImageUploadInput) {
     },
   })
 
-  return updatedImage
+  // Return with signed URL for immediate display
+  return addSignedUrl(updatedImage)
 }
 
 /**
@@ -121,7 +133,8 @@ export async function getImageById(imageId: string) {
     throw createError('Image not found', 404, 'IMAGE_NOT_FOUND')
   }
 
-  return image
+  // Return with signed URL for display
+  return addSignedUrl(image)
 }
 
 /**
@@ -150,8 +163,13 @@ export async function listImages(options?: { limit?: number; offset?: number }) 
     prisma.image.count(),
   ])
 
+  // Generate signed URLs for all images
+  const imagesWithSignedUrls = await Promise.all(
+    images.map(image => addSignedUrl(image))
+  )
+
   return {
-    images,
+    images: imagesWithSignedUrls,
     total,
     limit,
     offset,
