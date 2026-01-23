@@ -12,9 +12,10 @@ This directory contains the main texture visualization and editing interface. It
 ## PATTERNS
 
 **File Loading Pattern**
-Two ways to load viz2d files:
+Three ways to load viz2d files:
 1. Direct upload: `<input type="file" accept=".viz2d" />`
-2. From URL: `fetch(url) → blob → File` (see `loadFromUrl` in `index.tsx:13`)
+2. From URL: `fetch(url) → blob → File` (see `loadFromUrl` in `index.tsx:25`)
+3. From GalleryPage: Receives File via `location.state.file` (see `index.tsx:16-23`)
 
 **Canvas Interaction Pattern**
 1. Mouse move → calculate pixel index → find segment → set hover state
@@ -44,6 +45,8 @@ Example: `visualizer.tsx:189`, search:`useVirtualizer`
   - `isBundleLoading` - Initial viz2d file load
   - `isTextureLoading` - Applying/updating textures
   - `fileState.loading` - Sample file fetch (index.tsx)
+
+- **Gallery Integration** - VisualizerDemo checks `location.state.file` on mount to receive files from GalleryPage. Clears state after loading to prevent re-load on refresh.
 
 - **Texture Assets** - Loaded from `@/lib/textureAssets.json` with structure:
   ```

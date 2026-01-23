@@ -1,5 +1,5 @@
 <system_context>
-This directory contains shared utilities, configuration data, and asset catalogs. It provides static data (viz2d samples, texture library) and helper functions used across the application.
+Shared utilities, asset catalogs, and API client functions. Provides static data (viz2d samples, texture library), helper functions, and backend API integration.
 </system_context>
 
 <file_map>
@@ -8,6 +8,7 @@ This directory contains shared utilities, configuration data, and asset catalogs
 - `viz2dSamples.ts` - Array of sample viz2d files with preview images (3 samples)
 - `textureAssets.ts` - Legacy texture asset array (6 items, replaced by JSON)
 - `textureAssets.json` - Complete texture catalog (979 textures with base64 placeholders)
+- `api/` - **Backend API clients** (see `api/CLAUDE.md`)
 </file_map>
 
 <patterns>

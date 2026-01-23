@@ -1,62 +1,59 @@
 <system_context>
-React + Vite application for viz2d texture visualization and editing. Single-page app that loads viz2d bundles and applies textures to image segments via canvas rendering.
+React + Vite frontend for viz2d texture visualization. Multi-page app with image gallery, processing workflow, and canvas-based texture editor. Communicates with Express backend for GCS storage and Viz2D API proxying.
 </system_context>
 
 <file_map>
 ## FILE MAP
 - `main.tsx` - React root initialization with BrowserRouter wrapper
-- `App.tsx` - Root component that renders VisualizerDemo
+- `App.tsx` - Route definitions (/, /gallery, /api-test)
 - `index.css` - Global Tailwind imports and shadcn/ui CSS variable definitions
 - `vite-env.d.ts` - Vite TypeScript type definitions
-- `visualizer-demo/` - **Main texture editor UI** (see `visualizer-demo/CLAUDE.md`)
-- `lib/` - **Shared utilities and asset data** (see `lib/CLAUDE.md`)
-- `components/ui/` - shadcn/ui components (currently just Button)
-
-**Key Child Documentation:**
-- For texture editing workflow → `visualizer-demo/CLAUDE.md`
-- For texture assets and utilities → `lib/CLAUDE.md`
+- `visualizer-demo/` - **Texture editor UI** (see `visualizer-demo/CLAUDE.md`)
+- `lib/` - **Utilities, assets, API clients** (see `lib/CLAUDE.md`)
+- `hooks/` - **Custom React hooks** (see `hooks/CLAUDE.md`)
+- `pages/` - **Route-level pages** (see `pages/CLAUDE.md`)
+- `components/ui/` - shadcn/ui components
 </file_map>
 
 <critical_notes>
 ## CRITICAL NOTES
 
-- **Single Entry Point** - No routing used despite BrowserRouter setup; App directly renders VisualizerDemo component (`App.tsx:5`)
+### Routes
+| Path | Component | Purpose |
+|------|-----------|---------|
+| `/` | VisualizerDemo | Texture editor (load viz2d, apply textures) |
+| `/gallery` | GalleryPage | Upload images, process via Viz2D, open results |
+| `/api-test` | ApiTestPage | Debug UI for direct Viz2D API testing |
 
-- **Application Flow**:
-  1. `main.tsx` → Bootstraps React with StrictMode + BrowserRouter
-  2. `App.tsx` → Renders VisualizerDemo (file upload/selection)
-  3. VisualizerDemo → Conditionally renders Visualizer (canvas editor)
+### Application Flow
+1. **Gallery workflow**: Upload image → Process → Open in visualizer
+2. **Direct workflow**: Load viz2d file directly in visualizer
+3. Gallery passes viz2d File to visualizer via router state
 
-- **Styling Architecture** - Uses Tailwind CSS with shadcn/ui component library; CSS variables defined in `index.css` for theming
+### Styling Architecture
+- Tailwind CSS + shadcn/ui (new-york style, zinc theme)
+- CSS variables in `index.css` for theming
+- Path alias: `@/` → `src/`
 
-- **Path Aliases** - `@/` maps to `src/` directory (configured in tsconfig/vite)
-
-- **External Dependencies**:
-  - `@viz2d/core` - TextureRenderer for segment manipulation
-  - `@tanstack/react-virtual` - Virtual scrolling for texture list
-  - `lucide-react` - Icon library
-  - `@radix-ui` - Primitive components for shadcn/ui
-
-- **No Routing** - Despite BrowserRouter wrapper, app has no routes; single view only
+### External Dependencies
+- `@viz2d/core` - WASM TextureRenderer
+- `@tanstack/react-virtual` - Virtual scrolling
+- `lucide-react` - Icons
+- `@radix-ui` - Primitives for shadcn/ui
 </critical_notes>
 
 <paved_path>
 ## PAVED PATH
 
 **Understanding the App**
-1. Start with `App.tsx` - See the top-level structure
-2. Read `visualizer-demo/CLAUDE.md` - Understand texture editing workflow
-3. Read `lib/CLAUDE.md` - Understand data sources and utilities
+1. `App.tsx` - See routes
+2. `pages/CLAUDE.md` - Page components
+3. `hooks/CLAUDE.md` - API integration hooks
+4. `visualizer-demo/CLAUDE.md` - Texture editor
 
 **Adding New Features**
-- New UI components → Add to `components/ui/` (follow shadcn/ui pattern)
-- Texture editing features → Work in `visualizer-demo/` directory
-- New data sources → Add to `lib/` directory
-- Global styles → Modify `index.css`
-
-**Component Library Usage**
-shadcn/ui components are in `components/ui/`. Import and use with variants:
-```ts
-<Button variant="default|destructive|outline|secondary|ghost|link" size="default|sm|lg|icon" />
-```
+- New pages → Add to `pages/`, add route in `App.tsx`
+- New API calls → Add to `lib/api/`
+- New hooks → Add to `hooks/`
+- UI components → Use shadcn/ui CLI or add to `components/ui/`
 </paved_path>
