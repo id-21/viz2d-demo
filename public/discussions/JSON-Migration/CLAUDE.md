@@ -8,6 +8,7 @@ Data processing pipeline for migrating Cristiana Masi wallpaper SKU data into te
 - `CristianaMasi_all_SKUs_cleaned.csv` - Cleaned: 432 rows with valid S.No. and Item No.
 - `CristianaMasi_all_SKUs_only_needed_fields.csv` - Subset with 11 essential columns
 - `clean_sku_csv.py` - Removes rows missing S.No. or Item No.
+- `generate_texture_json_v2.py` - Merges CSV data with existing JSON to create enriched textureAssets_v2.json
 - `scale_details_csv/` - Adds imagePath, Brand, and calculated scale (see its CLAUDE.md)
 </file_map>
 
@@ -24,5 +25,5 @@ Data processing pipeline for migrating Cristiana Masi wallpaper SKU data into te
 1. Run `python3 clean_sku_csv.py` to clean raw CSV
 2. Run `python3 scale_details_csv/add_image_paths.py` to add paths
 3. Run `python3 scale_details_csv/calculate_scale.py` to calculate scale values
-4. Use `scale_details_csv/CristianaMasi_with_scale.csv` to update textureAssets.json (next step)
+4. Run `python3 generate_texture_json_v2.py` to merge CSV with JSON → outputs `src/lib/textureAssets_v2.json`
 </paved_path>
