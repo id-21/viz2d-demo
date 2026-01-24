@@ -21,13 +21,17 @@ Each texture object contains:
   "id": number,
   "name": string,
   "filename": string,
-  "localPath": string,          // Used in dev mode
-  "cloudUrl": string | null,     // Used in production
-  "placeholder": string,         // Base64 data URI (200x200 preview)
-  "scale": number | undefined    // Optional default scale (defaults to 0.52)
+  "localPath": string,             // Used in dev mode
+  "cloudUrl": string | null,       // Used in production
+  "placeholder": string,           // Base64 data URI (200x200 preview)
+  "scale": number | undefined,     // Optional default scale (defaults to 0.52)
+  "manufacturer_sku": string | undefined,
+  "sku": string | undefined,
+  "brand": string | undefined,
+  "collection": string | undefined
 }
 ```
-Example: `textureAssets.json:1-11`
+Full schema: `public/discussions/texture-json-schema.md`
 
 **Viz2d Sample Structure**
 Each sample contains:

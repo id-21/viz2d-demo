@@ -50,9 +50,9 @@ Example: `visualizer.tsx:189`, search:`useVirtualizer`
 
 - **Texture Assets** - Loaded from `@/lib/textureAssets.json` with structure:
   ```
-  { id, name, filename, localPath, cloudUrl, placeholder, scale? }
+  { id, name, filename, localPath, cloudUrl, placeholder, scale?, manufacturer_sku?, sku?, brand?, collection? }
   ```
-  Dev uses `localPath`, production uses `cloudUrl` (`visualizer.tsx:292`). Optional `scale` field sets default scale when applying (defaults to 0.52).
+  Dev uses `localPath`, production uses `cloudUrl` (`visualizer.tsx:292`). Optional `scale` field sets default scale when applying (defaults to 0.52). See `public/discussions/texture-json-schema.md` for full schema.
 
 - **Canvas Hover Effect** - Highlights hovered segment by darkening R/B channels and boosting G channel (`visualizer.tsx:224-229`)
 

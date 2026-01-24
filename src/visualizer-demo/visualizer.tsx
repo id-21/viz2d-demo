@@ -29,6 +29,10 @@ type TextureAsset = {
   cloudUrl: string | null;
   placeholder: string; // base64 200x200 preview
   scale?: number; // Optional default scale, defaults to 0.52
+  manufacturer_sku?: string;
+  sku?: string;
+  brand?: string;
+  collection?: string;
 };
 
 type TextureInfo = {
