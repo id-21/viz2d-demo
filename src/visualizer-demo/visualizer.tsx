@@ -28,6 +28,7 @@ type TextureAsset = {
   localPath: string;
   cloudUrl: string | null;
   placeholder: string; // base64 200x200 preview
+  scale?: number; // Optional default scale, defaults to 0.52
 };
 
 type TextureInfo = {
@@ -307,7 +308,7 @@ export default function Visualizer({ file }:{file:File}){
         {
           name: 1,
           rotation: 0,
-          scale: 0.52,
+          scale: texture.scale ?? 0.52,
           offset_x: 0,
           offset_y: 0,
         }

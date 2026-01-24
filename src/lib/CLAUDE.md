@@ -23,7 +23,8 @@ Each texture object contains:
   "filename": string,
   "localPath": string,          // Used in dev mode
   "cloudUrl": string | null,     // Used in production
-  "placeholder": string          // Base64 data URI (200x200 preview)
+  "placeholder": string,         // Base64 data URI (200x200 preview)
+  "scale": number | undefined    // Optional default scale (defaults to 0.52)
 }
 ```
 Example: `textureAssets.json:1-11`
