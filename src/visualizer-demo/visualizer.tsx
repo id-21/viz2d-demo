@@ -307,7 +307,7 @@ export default function Visualizer({ file }:{file:File}){
         {
           name: 1,
           rotation: 0,
-          scale: 1,
+          scale: 0.52,
           offset_x: 0,
           offset_y: 0,
         }
