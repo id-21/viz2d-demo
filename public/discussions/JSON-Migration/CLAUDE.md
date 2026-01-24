@@ -8,19 +8,21 @@ Data processing pipeline for migrating Cristiana Masi wallpaper SKU data into te
 - `CristianaMasi_all_SKUs_cleaned.csv` - Cleaned: 432 rows with valid S.No. and Item No.
 - `CristianaMasi_all_SKUs_only_needed_fields.csv` - Subset with 11 essential columns
 - `clean_sku_csv.py` - Removes rows missing S.No. or Item No.
-- `scale_details_csv/` - Adds imagePath and Brand columns (see its CLAUDE.md)
+- `scale_details_csv/` - Adds imagePath, Brand, and calculated scale (see its CLAUDE.md)
 </file_map>
 
 <critical_notes>
 ## CRITICAL NOTES
-- **Data flow**: Raw CSV → cleaned → only_needed_fields → scale_details_csv/with_paths
+- **Data flow**: Raw CSV → cleaned → only_needed_fields → with_paths → **with_scale** (final)
 - **Matching key**: CSV `Item No.` matches JSON `name` field in textureAssets.json
+- **Scale calculation**: `scale = height_pixels / (width_pixels / WIDTH_m)` - gives height in meters
 - **End goal**: Update `src/lib/textureAssets.json` with brand, collection, sku, and scale data
 </critical_notes>
 
 <paved_path>
 ## PAVED PATH
 1. Run `python3 clean_sku_csv.py` to clean raw CSV
-2. Process through `scale_details_csv/add_image_paths.py` to add paths
-3. Use output to update textureAssets.json (future script)
+2. Run `python3 scale_details_csv/add_image_paths.py` to add paths
+3. Run `python3 scale_details_csv/calculate_scale.py` to calculate scale values
+4. Use `scale_details_csv/CristianaMasi_with_scale.csv` to update textureAssets.json (next step)
 </paved_path>
