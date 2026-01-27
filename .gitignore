@@ -1,3 +1,4 @@
 dist
 node_modules
 .env
+public/discussions/tmp-new-viz2d-render-files

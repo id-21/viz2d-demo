@@ -47,6 +47,10 @@ type TextureInfo = {
 // Convert imported JSON data to typed array
 const textureAssets: TextureAsset[] = textureAssetsData as TextureAsset[];
 
+// Class filter: Only these classes will be interactable
+// Set to empty array [] to allow all classes
+const ALLOWED_CLASSES: string[] = ["wall"];
+
 // ----------------------
 // UI Components
 // ----------------------
@@ -152,6 +156,12 @@ function getMouseIndex(
   return x < 0 || y < 0 || x >= width || y >= height ? -1 : y * width + x;
 }
 
+// Check if a segment's class is allowed for interaction
+function isClassAllowed(className: string): boolean {
+  if (ALLOWED_CLASSES.length === 0) return true; // No filter = all allowed
+  return ALLOWED_CLASSES.includes(className);
+}
+
 
 // ----------------------
 // Main Component
@@ -251,10 +261,12 @@ export default function Visualizer({ file }:{file:File}){
         new Uint8Array(await file.arrayBuffer())
       );
 
-      const segs = renderer.get_segments() as SegmentWithMask[];
+      const segs = renderer.get_segments() as any[];
+      console.log("Loaded segments:", segs);
       setSegments(segs);
 
       const out = renderer.get_output();
+      console.log("Output: ", out);
       const map = new Int32Array(out.width * out.height).fill(-1);
       for (const s of segs) for (const idx of s.mask) map[idx] = s.segment_id;
 
@@ -279,7 +291,25 @@ export default function Visualizer({ file }:{file:File}){
       imageSize.width,
       imageSize.height
     );
-    setHoverSeg(idx >= 0 ? segMap[idx] : null);
+
+    if (idx < 0) {
+      setHoverSeg(null);
+      return;
+    }
+
+    const segId = segMap[idx];
+    if (segId < 0) {
+      setHoverSeg(null);
+      return;
+    }
+
+    // Check if segment's class is allowed
+    const seg = segments.find(s => s.segment_id === segId);
+    if (seg && isClassAllowed(seg.class_name)) {
+      setHoverSeg(segId);
+    } else {
+      setHoverSeg(null);
+    }
   };
 
   const applyTexture = async (segmentId: number) => {
@@ -366,6 +396,10 @@ export default function Visualizer({ file }:{file:File}){
   const handleClick = () => {
     if (hoverSeg == null || isBundleLoading || isTextureLoading) return;
     if (selectedTexture == null) return;
+
+    // Double-check class is allowed (hoverSeg should already be filtered, but be safe)
+    const seg = segments.find(s => s.segment_id === hoverSeg);
+    if (!seg || !isClassAllowed(seg.class_name)) return;
 
     const textureId = segmentTextureMap[hoverSeg];
     if (textureId != null) {
