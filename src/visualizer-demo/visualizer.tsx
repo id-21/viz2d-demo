@@ -199,13 +199,14 @@ export default function Visualizer({ file }:{file:File}){
     );
   }, [searchQuery]);
 
-  // Virtual scrolling setup
+  // Virtual scrolling setup - virtualize ROWS (2 items per row)
   const parentRef = useRef<HTMLDivElement>(null);
+  const rowCount = Math.ceil(filteredTextures.length / 2);
   const virtualizer = useVirtualizer({
-    count: filteredTextures.length,
+    count: rowCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 180, // Height per item (includes gap)
-    overscan: 10, // Render 10 extra items above/below viewport
+    estimateSize: () => 180, // Height per row (includes gap)
+    overscan: 5, // Render 5 extra rows above/below viewport
   });
 
   const refreshTextures = useCallback(() => {
@@ -479,46 +480,82 @@ export default function Visualizer({ file }:{file:File}){
             position: 'relative',
           }}
         >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const texture = filteredTextures[virtualItem.index];
-            const columnIndex = virtualItem.index % 2; // 0 for left, 1 for right
-            const rowIndex = Math.floor(virtualItem.index / 2);
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            // Each virtual item is a ROW containing up to 2 textures
+            const leftIndex = virtualRow.index * 2;
+            const rightIndex = leftIndex + 1;
+            const leftTexture = filteredTextures[leftIndex];
+            const rightTexture = filteredTextures[rightIndex]; // May be undefined for odd counts
 
             return (
               <div
-                key={texture.id}
+                key={virtualRow.key}
                 style={{
                   position: 'absolute',
                   top: 0,
-                  left: columnIndex === 0 ? '0' : 'calc(50% + 6px)',
-                  width: 'calc(50% - 6px)',
-                  transform: `translateY(${rowIndex * 180}px)`,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
                 }}
+                className="flex gap-3"
               >
+                {/* Left texture */}
                 <button
-                  onClick={() => setSelectedTexture(texture.id)}
+                  onClick={() => setSelectedTexture(leftTexture.id)}
                   className={`
-                    w-full rounded-lg overflow-hidden border-2 transition-all
-                    ${selectedTexture === texture.id
+                    flex-1 rounded-lg overflow-hidden border-2 transition-all
+                    ${selectedTexture === leftTexture.id
                       ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
                       : 'border-zinc-700 hover:border-zinc-600'}
                   `}
                   disabled={!bundleLoaded}
                 >
                   <img
-                    src={texture.placeholder}
-                    alt={texture.name}
+                    src={leftTexture.placeholder}
+                    alt={leftTexture.name}
                     className="w-full aspect-square object-cover"
                   />
                   <div className={`
                     text-xs p-1.5 text-center
-                    ${selectedTexture === texture.id
+                    ${selectedTexture === leftTexture.id
                       ? 'bg-indigo-500/20 text-indigo-200'
                       : 'bg-zinc-800 text-zinc-400'}
                   `}>
-                    {texture.name}
+                    {leftTexture.name}
                   </div>
                 </button>
+
+                {/* Right texture (only if exists) */}
+                {rightTexture && (
+                  <button
+                    onClick={() => setSelectedTexture(rightTexture.id)}
+                    className={`
+                      flex-1 rounded-lg overflow-hidden border-2 transition-all
+                      ${selectedTexture === rightTexture.id
+                        ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
+                        : 'border-zinc-700 hover:border-zinc-600'}
+                    `}
+                    disabled={!bundleLoaded}
+                  >
+                    <img
+                      src={rightTexture.placeholder}
+                      alt={rightTexture.name}
+                      className="w-full aspect-square object-cover"
+                    />
+                    <div className={`
+                      text-xs p-1.5 text-center
+                      ${selectedTexture === rightTexture.id
+                        ? 'bg-indigo-500/20 text-indigo-200'
+                        : 'bg-zinc-800 text-zinc-400'}
+                    `}>
+                      {rightTexture.name}
+                    </div>
+                  </button>
+                )}
+
+                {/* Empty placeholder for odd counts to maintain layout */}
+                {!rightTexture && <div className="flex-1" />}
               </div>
             );
           })}
