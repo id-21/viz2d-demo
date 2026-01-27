@@ -9,7 +9,8 @@ import {
 } from "react";
 import { TextureRenderer } from "@viz2d/core";
 import textureAssetsData from "@/lib/textureAssets.json";
-import { Search, Settings } from "lucide-react";
+import { Search, Settings, Heart } from "lucide-react";
+import { useFavourites } from "@/hooks/useFavourites";
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 // ----------------------
@@ -187,17 +188,29 @@ export default function Visualizer({ file }:{file:File}){
   const [searchQuery, setSearchQuery] = useState("");
   const [showSliders, setShowSliders] = useState(false);
   const [textures, setTextures] = useState<TextureInfo[]>([]);
+  const [showFavouritesOnly, setShowFavouritesOnly] = useState(false);
+  const { favourites, isFavourite, toggleFavourite, favouriteCount } = useFavourites();
 
-  // Filtered textures with search
+  // Filtered textures with search and favourites filter
   const filteredTextures = useMemo(() => {
-    if (!searchQuery.trim()) return textureAssets;
+    let result = textureAssets;
 
-    const query = searchQuery.toLowerCase().trim();
-    return textureAssets.filter(texture =>
-      texture.name.toLowerCase().includes(query) ||
-      texture.filename.toLowerCase().includes(query)
-    );
-  }, [searchQuery]);
+    // Filter by favourites first if enabled
+    if (showFavouritesOnly) {
+      result = result.filter(texture => favourites.has(texture.id));
+    }
+
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(texture =>
+        texture.name.toLowerCase().includes(query) ||
+        texture.filename.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [searchQuery, showFavouritesOnly, favourites]);
 
   // Virtual scrolling setup - virtualize ROWS (2 items per row)
   const parentRef = useRef<HTMLDivElement>(null);
@@ -441,18 +454,38 @@ export default function Visualizer({ file }:{file:File}){
       </div>
 
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Textures</h3>
-        <button
-          onClick={() => setShowSliders(!showSliders)}
-          className={`p-1.5 rounded-md transition-colors ${
-            showSliders
-              ? 'bg-indigo-500/20 text-indigo-400'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-          }`}
-          title="Toggle texture controls"
-        >
-          <Settings className="h-4 w-4" />
-        </button>
+        <h3 className="text-sm font-semibold">
+          Textures
+          {showFavouritesOnly && favouriteCount > 0 && (
+            <span className="ml-2 text-xs font-normal text-indigo-400">
+              ({favouriteCount})
+            </span>
+          )}
+        </h3>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowFavouritesOnly(!showFavouritesOnly)}
+            className={`p-1.5 rounded-md transition-colors ${
+              showFavouritesOnly
+                ? 'bg-red-500/20 text-red-400'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+            }`}
+            title={showFavouritesOnly ? "Show all textures" : "Show favourites only"}
+          >
+            <Heart className={`h-4 w-4 ${showFavouritesOnly ? 'fill-current' : ''}`} />
+          </button>
+          <button
+            onClick={() => setShowSliders(!showSliders)}
+            className={`p-1.5 rounded-md transition-colors ${
+              showSliders
+                ? 'bg-indigo-500/20 text-indigo-400'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+            }`}
+            title="Toggle texture controls"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {!bundleLoaded && (
@@ -501,57 +534,91 @@ export default function Visualizer({ file }:{file:File}){
                 className="flex gap-3"
               >
                 {/* Left texture */}
-                <button
-                  onClick={() => setSelectedTexture(leftTexture.id)}
-                  className={`
-                    flex-1 rounded-lg overflow-hidden border-2 transition-all
-                    ${selectedTexture === leftTexture.id
-                      ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
-                      : 'border-zinc-700 hover:border-zinc-600'}
-                  `}
-                  disabled={!bundleLoaded}
-                >
-                  <img
-                    src={leftTexture.placeholder}
-                    alt={leftTexture.name}
-                    className="w-full aspect-square object-cover"
-                  />
-                  <div className={`
-                    text-xs p-1.5 text-center
-                    ${selectedTexture === leftTexture.id
-                      ? 'bg-indigo-500/20 text-indigo-200'
-                      : 'bg-zinc-800 text-zinc-400'}
-                  `}>
-                    {leftTexture.name}
-                  </div>
-                </button>
-
-                {/* Right texture (only if exists) */}
-                {rightTexture && (
+                <div className="flex-1 relative">
                   <button
-                    onClick={() => setSelectedTexture(rightTexture.id)}
+                    onClick={() => setSelectedTexture(leftTexture.id)}
                     className={`
-                      flex-1 rounded-lg overflow-hidden border-2 transition-all
-                      ${selectedTexture === rightTexture.id
+                      w-full rounded-lg overflow-hidden border-2 transition-all
+                      ${selectedTexture === leftTexture.id
                         ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
                         : 'border-zinc-700 hover:border-zinc-600'}
                     `}
                     disabled={!bundleLoaded}
                   >
                     <img
-                      src={rightTexture.placeholder}
-                      alt={rightTexture.name}
+                      src={leftTexture.placeholder}
+                      alt={leftTexture.name}
                       className="w-full aspect-square object-cover"
                     />
                     <div className={`
                       text-xs p-1.5 text-center
-                      ${selectedTexture === rightTexture.id
+                      ${selectedTexture === leftTexture.id
                         ? 'bg-indigo-500/20 text-indigo-200'
                         : 'bg-zinc-800 text-zinc-400'}
                     `}>
-                      {rightTexture.name}
+                      {leftTexture.name}
                     </div>
                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavourite(leftTexture.id);
+                    }}
+                    className={`
+                      absolute top-1.5 right-1.5 p-1 rounded-full transition-all duration-150
+                      ${isFavourite(leftTexture.id)
+                        ? 'bg-red-500/90 text-white'
+                        : 'bg-black/50 text-white/70 hover:bg-black/70 hover:text-white'}
+                    `}
+                    title={isFavourite(leftTexture.id) ? "Remove from favourites" : "Add to favourites"}
+                  >
+                    <Heart className={`h-3.5 w-3.5 ${isFavourite(leftTexture.id) ? 'fill-current' : ''}`} />
+                  </button>
+                </div>
+
+                {/* Right texture (only if exists) */}
+                {rightTexture && (
+                  <div className="flex-1 relative">
+                    <button
+                      onClick={() => setSelectedTexture(rightTexture.id)}
+                      className={`
+                        w-full rounded-lg overflow-hidden border-2 transition-all
+                        ${selectedTexture === rightTexture.id
+                          ? 'border-indigo-500 shadow-lg shadow-indigo-500/50'
+                          : 'border-zinc-700 hover:border-zinc-600'}
+                      `}
+                      disabled={!bundleLoaded}
+                    >
+                      <img
+                        src={rightTexture.placeholder}
+                        alt={rightTexture.name}
+                        className="w-full aspect-square object-cover"
+                      />
+                      <div className={`
+                        text-xs p-1.5 text-center
+                        ${selectedTexture === rightTexture.id
+                          ? 'bg-indigo-500/20 text-indigo-200'
+                          : 'bg-zinc-800 text-zinc-400'}
+                      `}>
+                        {rightTexture.name}
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavourite(rightTexture.id);
+                      }}
+                      className={`
+                        absolute top-1.5 right-1.5 p-1 rounded-full transition-all duration-150
+                        ${isFavourite(rightTexture.id)
+                          ? 'bg-red-500/90 text-white'
+                          : 'bg-black/50 text-white/70 hover:bg-black/70 hover:text-white'}
+                      `}
+                      title={isFavourite(rightTexture.id) ? "Remove from favourites" : "Add to favourites"}
+                    >
+                      <Heart className={`h-3.5 w-3.5 ${isFavourite(rightTexture.id) ? 'fill-current' : ''}`} />
+                    </button>
+                  </div>
                 )}
 
                 {/* Empty placeholder for odd counts to maintain layout */}
@@ -560,8 +627,14 @@ export default function Visualizer({ file }:{file:File}){
             );
           })}
         </div>
-        {filteredTextures.length === 0 && searchQuery && (
-          <p className="text-xs text-zinc-500 text-center py-8">No textures found</p>
+        {filteredTextures.length === 0 && (
+          <p className="text-xs text-zinc-500 text-center py-8">
+            {showFavouritesOnly && !searchQuery
+              ? "No favourites yet. Click the heart icon to add textures."
+              : showFavouritesOnly && searchQuery
+                ? "No favourites match your search"
+                : "No textures found"}
+          </p>
         )}
       </div>
 
