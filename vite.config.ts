@@ -10,7 +10,8 @@ const localTextureMiddleware = (): Plugin => ({
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
       if (req.url?.startsWith('/local-textures/')) {
-        const texturePath = req.url.replace('/local-textures/', '');
+        // Decode URL-encoded characters (e.g., %20 for spaces in folder names)
+        const texturePath = decodeURIComponent(req.url.replace('/local-textures/', ''));
         const fsPath = path.join(
           '/Users/ishan-aiworkspace/Documents/Daga PDF All Design Assets/TexturesForViz2D/Texture File',
           texturePath
