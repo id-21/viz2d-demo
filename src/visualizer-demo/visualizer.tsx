@@ -204,8 +204,9 @@ export default function Visualizer({ file }:{file:File}){
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(texture =>
-        texture.name.toLowerCase().includes(query) ||
-        texture.filename.toLowerCase().includes(query)
+        texture.brand?.toLowerCase().includes(query) ||
+        texture.collection?.toLowerCase().includes(query) ||
+        texture.sku?.toLowerCase().includes(query)
       );
     }
 
@@ -556,7 +557,7 @@ export default function Visualizer({ file }:{file:File}){
                         ? 'bg-indigo-500/20 text-indigo-200'
                         : 'bg-zinc-800 text-zinc-400'}
                     `}>
-                      {leftTexture.name}
+                      {leftTexture.sku}
                     </div>
                   </button>
                   <button
@@ -600,7 +601,7 @@ export default function Visualizer({ file }:{file:File}){
                           ? 'bg-indigo-500/20 text-indigo-200'
                           : 'bg-zinc-800 text-zinc-400'}
                       `}>
-                        {rightTexture.name}
+                        {rightTexture.sku}
                       </div>
                     </button>
                     <button

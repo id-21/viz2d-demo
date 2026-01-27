@@ -105,26 +105,37 @@ def calculate_scale(width_pixels: int, height_pixels: int, width_m: float) -> fl
     return round(height_pixels / pixel_ratio, 2)
 
 
-def find_image_in_texture_folder(collection_name: str, item_no: str) -> Path:
+def find_image_in_texture_folder(collection_name: str, item_no: str, prefer_seamless: bool = False) -> Path:
     """
     Look for an image file in the texture folder.
     Returns the path if found, None otherwise.
+
+    If prefer_seamless is True, look for {item_no}_seamless.ext first (for offset patterns).
     """
+    # Build list of filenames to try
+    if prefer_seamless:
+        # For offset patterns, try seamless version first
+        base_names = [f"{item_no}_seamless", item_no]
+    else:
+        base_names = [item_no]
+
     # Try exact collection name match
     collection_path = TEXTURE_BASE_PATH / collection_name
     if collection_path.exists():
-        for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
-            image_path = collection_path / f"{item_no}{ext}"
-            if image_path.exists():
-                return image_path
+        for base_name in base_names:
+            for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
+                image_path = collection_path / f"{base_name}{ext}"
+                if image_path.exists():
+                    return image_path
 
     # Try case-insensitive collection name match
     for folder in TEXTURE_BASE_PATH.iterdir():
         if folder.is_dir() and folder.name.lower() == collection_name.lower():
-            for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
-                image_path = folder / f"{item_no}{ext}"
-                if image_path.exists():
-                    return image_path
+            for base_name in base_names:
+                for ext in ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
+                    image_path = folder / f"{base_name}{ext}"
+                    if image_path.exists():
+                        return image_path
 
     return None
 
@@ -157,6 +168,8 @@ def main():
     from_json_count = 0
     from_folder_count = 0
     skipped_count = 0
+    offset_count = 0
+    seamless_used_count = 0
 
     for row in csv_rows:
         item_no = row['Item No.']
@@ -167,21 +180,62 @@ def main():
             continue
         seen_names.add(item_no)
 
+        # Determine repeat type (offset or straight)
+        repeat_type_raw = row.get('Repeat_1_Type', '').strip().lower()
+        repeat_2_type_raw = row.get('Repeat_2_Type', '').strip().lower()
+        is_offset = repeat_type_raw == 'offset' or repeat_2_type_raw == 'offset'
+
+        if is_offset:
+            offset_count += 1
+
         # Try to get base entry from JSON first
         if item_no in json_by_name:
             base_entry = json_by_name[item_no]
-            new_entry = {
-                'id': None,  # Will be reassigned
-                'name': base_entry['name'],
-                'filename': base_entry['filename'],
-                'localPath': base_entry['localPath'],
-                'cloudUrl': base_entry['cloudUrl'],
-                'placeholder': base_entry['placeholder'],
-            }
+
+            # For offset patterns, check if seamless version exists
+            if is_offset:
+                seamless_path = find_image_in_texture_folder(collection_name, item_no, prefer_seamless=True)
+                if seamless_path and '_seamless' in seamless_path.name:
+                    # Use seamless version
+                    filename = seamless_path.name
+                    actual_collection = seamless_path.parent.name
+                    local_path = f"/local-textures/{actual_collection}/{filename}"
+                    placeholder = generate_placeholder(seamless_path)
+                    seamless_used_count += 1
+                    print(f"  Using seamless for offset: {item_no} -> {filename}")
+
+                    new_entry = {
+                        'id': None,
+                        'name': base_entry['name'],
+                        'filename': filename,
+                        'localPath': local_path,
+                        'cloudUrl': base_entry['cloudUrl'],
+                        'placeholder': placeholder,
+                    }
+                else:
+                    # No seamless version, use original
+                    new_entry = {
+                        'id': None,
+                        'name': base_entry['name'],
+                        'filename': base_entry['filename'],
+                        'localPath': base_entry['localPath'],
+                        'cloudUrl': base_entry['cloudUrl'],
+                        'placeholder': base_entry['placeholder'],
+                    }
+            else:
+                # Straight pattern, use original
+                new_entry = {
+                    'id': None,
+                    'name': base_entry['name'],
+                    'filename': base_entry['filename'],
+                    'localPath': base_entry['localPath'],
+                    'cloudUrl': base_entry['cloudUrl'],
+                    'placeholder': base_entry['placeholder'],
+                }
             from_json_count += 1
         else:
-            # Check if image exists in texture folder
-            image_path = find_image_in_texture_folder(collection_name, item_no)
+            # Check if image exists in texture folder (prefer seamless for offset)
+            image_path = find_image_in_texture_folder(collection_name, item_no, prefer_seamless=is_offset)
             if image_path:
                 # Create new entry from texture folder
                 filename = image_path.name
@@ -189,7 +243,11 @@ def main():
                 actual_collection = image_path.parent.name
                 local_path = f"/local-textures/{actual_collection}/{filename}"
 
-                print(f"  Found in folder: {item_no} ({actual_collection})")
+                if is_offset and '_seamless' in filename:
+                    seamless_used_count += 1
+                    print(f"  Found seamless in folder: {item_no} -> {filename}")
+                else:
+                    print(f"  Found in folder: {item_no} ({actual_collection})")
 
                 # Generate placeholder
                 placeholder = generate_placeholder(image_path)
@@ -214,7 +272,10 @@ def main():
         new_entry['sku'] = row['S.No.']
         new_entry['manufacturer_sku'] = row['Article']
 
-        # Add scale if present in CSV
+        # Add repeatType field
+        new_entry['repeatType'] = 'offset' if is_offset else 'straight'
+
+        # Add scale if present in CSV (use pre-calculated value - DO NOT recalculate from doubled image)
         scale_str = row.get('scale', '').strip()
         if scale_str:
             try:
@@ -222,23 +283,18 @@ def main():
             except ValueError:
                 pass  # Skip invalid scale values
         else:
-            # Try to calculate scale if we have image path and WIDTH m
+            # Try to calculate scale from ORIGINAL image dimensions if we have WIDTH m
+            # IMPORTANT: For offset patterns, we must use the original image dimensions,
+            # not the doubled seamless image dimensions
             width_m_str = row.get('WIDTH m', '').strip()
             if width_m_str and 'localPath' in new_entry:
                 try:
                     width_m = float(width_m_str)
-                    # Get actual image path
-                    if item_no in json_by_name:
-                        # For JSON entries, construct path from localPath
-                        local_path = new_entry['localPath']
-                        if local_path.startswith('/local-textures/'):
-                            rel_path = local_path.replace('/local-textures/', '')
-                            actual_path = TEXTURE_BASE_PATH / rel_path
-                    else:
-                        actual_path = find_image_in_texture_folder(collection_name, item_no)
+                    # Get ORIGINAL image path (not seamless)
+                    original_path = find_image_in_texture_folder(collection_name, item_no, prefer_seamless=False)
 
-                    if actual_path and actual_path.exists():
-                        width_px, height_px = get_image_dimensions(actual_path)
+                    if original_path and original_path.exists():
+                        width_px, height_px = get_image_dimensions(original_path)
                         if width_px and height_px:
                             scale = calculate_scale(width_px, height_px, width_m)
                             if scale:
@@ -264,6 +320,15 @@ def main():
     print(f"  - From existing JSON: {from_json_count}")
     print(f"  - From texture folder: {from_folder_count}")
     print(f"  - Skipped (not found): {skipped_count}")
+
+    # Count repeat types
+    straight_count = sum(1 for e in output_entries if e.get('repeatType') == 'straight')
+    offset_in_output = sum(1 for e in output_entries if e.get('repeatType') == 'offset')
+
+    print(f"\nRepeat types:")
+    print(f"  - Straight patterns: {straight_count}")
+    print(f"  - Offset patterns: {offset_in_output}")
+    print(f"  - Offset with seamless image: {seamless_used_count}")
 
     # Count fields
     with_scale = sum(1 for e in output_entries if 'scale' in e)
