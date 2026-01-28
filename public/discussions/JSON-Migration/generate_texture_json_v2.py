@@ -19,7 +19,8 @@ from io import BytesIO
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent
 INPUT_JSON = PROJECT_ROOT / "src" / "lib" / "textureAssets.json"
-INPUT_CSV = SCRIPT_DIR / "scale_details_csv" / "CristianaMasi_with_scale.csv"
+INPUT_CSV_ORIGINAL = SCRIPT_DIR / "scale_details_csv" / "CristianaMasi_with_scale.csv"
+INPUT_CSV_NEW = SCRIPT_DIR / "new_collections" / "ALL_new_collections_with_scale.csv"
 OUTPUT_JSON = PROJECT_ROOT / "src" / "lib" / "textureAssets_v2.json"
 
 # Texture folder path (where all collection images are stored)
@@ -142,7 +143,8 @@ def find_image_in_texture_folder(collection_name: str, item_no: str, prefer_seam
 
 def main():
     print(f"Loading JSON from: {INPUT_JSON}")
-    print(f"Loading CSV from: {INPUT_CSV}")
+    print(f"Loading CSV 1 (original): {INPUT_CSV_ORIGINAL}")
+    print(f"Loading CSV 2 (new collections): {INPUT_CSV_NEW}")
     print(f"Texture folder: {TEXTURE_BASE_PATH}")
     print(f"Output will be: {OUTPUT_JSON}")
     print("-" * 60)
@@ -155,12 +157,22 @@ def main():
     json_by_name = {entry['name']: entry for entry in json_data}
     print(f"Loaded {len(json_data)} JSON entries")
 
-    # Load CSV
+    # Load original CSV (7 collections)
     csv_rows = []
-    with open(INPUT_CSV, 'r', encoding='utf-8') as f:
+    with open(INPUT_CSV_ORIGINAL, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         csv_rows = list(reader)
-    print(f"Loaded {len(csv_rows)} CSV rows")
+    print(f"Loaded {len(csv_rows)} rows from original CSV")
+
+    # Load new collections CSV (6 collections)
+    with open(INPUT_CSV_NEW, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        new_rows = list(reader)
+    print(f"Loaded {len(new_rows)} rows from new collections CSV")
+
+    # Combine both CSVs
+    csv_rows.extend(new_rows)
+    print(f"Total CSV rows: {len(csv_rows)}")
 
     # Process and merge
     output_entries = []
@@ -178,7 +190,6 @@ def main():
         # Skip duplicates (CSV has some duplicate rows)
         if item_no in seen_names:
             continue
-        seen_names.add(item_no)
 
         # Determine repeat type (offset or straight)
         repeat_type_raw = row.get('Repeat_1_Type', '').strip().lower()
@@ -303,6 +314,8 @@ def main():
                     pass
 
         output_entries.append(new_entry)
+        # Mark as seen only after successfully adding
+        seen_names.add(item_no)
 
     # Reassign sequential IDs
     for i, entry in enumerate(output_entries, start=1):
